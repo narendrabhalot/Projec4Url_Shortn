@@ -6,7 +6,8 @@ const UrlSchema = new mongoose.Schema({
         type: String,
         trim: true,
         required: "longUrl is mandatory ",
-        lowercase: true
+        lowercase: true,
+        
     },
 
     shortUrl: {
