@@ -2,7 +2,8 @@ const shortId = require("shortid");
 const Url = require("../models/urlModel");
 const isVlidurl = require("url-validation")
 const redis = require("redis");
-const validUrl = require("valid-url")
+const isValidUrl = require("valid-url")
+
 
 const { promisify } = require("util");
 
@@ -40,12 +41,6 @@ const creatUrl = async function (req, res) {
         return res.status(400).send({ status: false, message: "please enter a longUrl" })
     }
 
-    // check base url
-    // if (validUrl.isUri(baseUrl)) {
-    //     return res.status(400).send({ status: false, message: "Invalid base url" });
-    // }
-
-    // check long url
     if (isVlidurl(longUrl)) {
 
         try {
@@ -54,55 +49,55 @@ const creatUrl = async function (req, res) {
 
             if (cacheProfileData) {
                 console.log(cacheProfileData)
-                // let changetoparse = JSON.parse(cacheProfileData)
+                let changetoparse = JSON.parse(cacheProfileData)
                 console.log("after set longurl")
-                return res.status(200).send({ status: true, msg: " longurl already used", data: cacheProfileData })
-            }
-            const findUrl = await Url.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 });
-           
-           if(findUrl){
-            console.log(findUrl)
-            await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(findUrl))
-            console.log("before set longurl")
+                return res.status(200).send({ status: true, msg: " longurl already used", data: changetoparse })
             
-            return res.status(200).send({ status: true, message: "Already Exist this longUrl", data: findUrl });
-           }else{
-       
-            let url = await Url.findOne({ longUrl });
-            // create url code
-            let urlCode = shortId.generate();
-            let shortUrl = baseUrl + "/" + urlCode;
+            } else {
 
-            url = new Url({
-                longUrl,
-                shortUrl,
-                urlCode,
-            });
-            await url.save();
+                let url = await Url.findOne({ longUrl });
+                // create url code
+                let urlCode = shortId.generate();
+                let shortUrl = baseUrl + "/" + urlCode;
+                let createData = {}
+                url = new Url({
+                    longUrl,
+                    shortUrl,
+                    urlCode,
+                });
+                await url.save();
+                createData["longUrl"]=longUrl
+                createData["shortUrl"]=shortUrl
+                createData["urlCode"]=urlCode
 
+                await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(createData))
 
-            return res.status(201).send({ status: true, data: url });
+                return res.status(201).send({ status: true, data:createData });
+            }
+        } catch (error) {
+            console.error(error);
+            return res.status(500).send({ status: false, error: error.message });
         }
-    } catch (error) {
-        console.error(error);
-        return res.status(500).send({ status: false, error: error.message });
     }
-}
     else {
-    return res.status(400).send({ status: false, message: "Invalid long url" });
-}
+        return res.status(400).send({ status: false, message: "Invalid long url" });
+    }
 }
 ////////////////////***get api***////////////////
 
 const getUrl = async (req, res) => {
     try {
         let url1 = req.params.urlcode
+        if (!isValid(url1)) {
+            return res.status(400).send({ status: false, message: "please enter a urlCde" })
+        }
+        
         let url = await Url.findOne({ urlCode: url1 });
 
         if (url) {
             let cacheProfileData = await GET_ASYNC(`${url1}`)
             if (cacheProfileData) {
-                // let changetoparse = JSON.parse(cacheProfileData)
+                let changetoparse = JSON.parse(cacheProfileData)
                 console.log("after cache")
                 return res.status(302).redirect(changetoparse.longUrl);
 
