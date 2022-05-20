@@ -40,11 +40,11 @@ const creatUrl = async function (req, res) {
     if (!isValid(longUrl)) {
         return res.status(400).send({ status: false, message: "please enter a longUrl" })
     }
-    if(Object.keys(req.body).length>1){
+    if (Object.keys(req.body).length > 1) {
         return res.status(400).send({ status: false, message: "only One data need in " })
     }
 
-    if(!isValidUrl.isWebUri(baseUrl)){
+    if (!isValidUrl.isWebUri(baseUrl)) {
         return res.status(400).send({ status: false, message: "enter a valid baseUrl" })
     }
 
@@ -58,18 +58,18 @@ const creatUrl = async function (req, res) {
                 console.log(cacheProfileData)
                 let changetoparse = JSON.parse(cacheProfileData)
                 console.log("after set longurl")
-                return res.status(200).send({ status:true , msg: " longurl already used", data: changetoparse })
-            
+                return res.status(200).send({ status: true, msg: " longurl already used", data: changetoparse })
+
             }
-            
-            let isusedurl = await Url.findOne({longUrl})
-            if(isusedurl){
+
+            let isusedurl = await Url.findOne({ longUrl })
+            if (isusedurl) {
                 await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(isusedurl))
                 return res.status(200).send({ status: true, msg: " longurl already used", data: isusedurl })
             }
-            
-            
-            
+
+
+
             else {
 
                 let url = await Url.findOne({ longUrl });
@@ -83,13 +83,13 @@ const creatUrl = async function (req, res) {
                     urlCode,
                 });
                 await url.save();
-                createData["longUrl"]=longUrl
-                createData["shortUrl"]=shortUrl
-                createData["urlCode"]=urlCode
+                createData["longUrl"] = longUrl
+                createData["shortUrl"] = shortUrl
+                createData["urlCode"] = urlCode
 
                 await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(createData))
 
-                return res.status(201).send({ status: true, data:createData });
+                return res.status(201).send({ status: true, data: createData });
             }
         } catch (error) {
             console.error(error);
@@ -104,27 +104,26 @@ const creatUrl = async function (req, res) {
 
 const getUrl = async (req, res) => {
     try {
-        let url1 = req.params.urlcode
+        let url1 = req.params.urlCode
         if (!isValid(url1)) {
             return res.status(400).send({ status: false, message: "please enter a urlCode" })
         }
-        
+
+        let cacheProfileData = await GET_ASYNC(`${url1}`)
+        if (cacheProfileData) {
+            let changetoparse = JSON.parse(cacheProfileData)
+            console.log("after cache")
+            return res.status(302).redirect(changetoparse.longUrl);
+        }
+
+
         let url = await Url.findOne({ urlCode: url1 });
-
         if (url) {
-            let cacheProfileData = await GET_ASYNC(`${url1}`)
-            if (cacheProfileData) {
-                let changetoparse = JSON.parse(cacheProfileData)
-                console.log("after cache")
-                return res.status(302).redirect(changetoparse.longUrl);
-
-            }
-            else {
-                await SET_ASYNC(`${url1}`, JSON.stringify(url))
-                console.log("before cache")
-                return res.status(302).redirect(url.longUrl);
-            }
-        } else {
+            await SET_ASYNC(`${url1}`, JSON.stringify(url))
+            console.log("before cache")
+            return res.status(302).redirect(url.longUrl);
+        }
+        else {
             return res.status(404).send({ status: false, message: "No url found" });
         }
     } catch (error) {
