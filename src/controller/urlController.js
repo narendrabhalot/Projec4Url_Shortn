@@ -40,6 +40,9 @@ const creatUrl = async function (req, res) {
     if (!isValid(longUrl)) {
         return res.status(400).send({ status: false, message: "please enter a longUrl" })
     }
+    if(Object.keys(req.body).length>1){
+        return res.status(400).send({ status: false, message: "only One data need in " })
+    }
 
     if(!isValidUrl.isWebUri(baseUrl)){
         return res.status(400).send({ status: false, message: "enter a valid baseUrl" })
@@ -55,9 +58,19 @@ const creatUrl = async function (req, res) {
                 console.log(cacheProfileData)
                 let changetoparse = JSON.parse(cacheProfileData)
                 console.log("after set longurl")
-                return res.status(200).send({ status: true, msg: " longurl already used", data: changetoparse })
+                return res.status(200).send({ status:true , msg: " longurl already used", data: changetoparse })
             
-            } else {
+            }
+            
+            let isusedurl = await Url.findOne({longUrl})
+            if(isusedurl){
+                await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(isusedurl))
+                return res.status(200).send({ status: true, msg: " longurl already used", data: isusedurl })
+            }
+            
+            
+            
+            else {
 
                 let url = await Url.findOne({ longUrl });
                 // create url code
@@ -93,7 +106,7 @@ const getUrl = async (req, res) => {
     try {
         let url1 = req.params.urlcode
         if (!isValid(url1)) {
-            return res.status(400).send({ status: false, message: "please enter a urlCde" })
+            return res.status(400).send({ status: false, message: "please enter a urlCode" })
         }
         
         let url = await Url.findOne({ urlCode: url1 });
