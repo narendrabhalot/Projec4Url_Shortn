@@ -41,6 +41,10 @@ const creatUrl = async function (req, res) {
         return res.status(400).send({ status: false, message: "please enter a longUrl" })
     }
 
+    if(!isValidUrl.isWebUri(baseUrl)){
+        return res.status(400).send({ status: false, message: "enter a valid baseUrl" })
+    }
+
     if (isVlidurl(longUrl)) {
 
         try {
