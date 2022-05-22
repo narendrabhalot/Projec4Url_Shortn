@@ -34,22 +34,22 @@ const isValid = function (value) {
 };
 
 const creatUrl = async function (req, res) {
-    let  longUrl  = req.body.longUrl
+    let longUrl = req.body.longUrl
     let shortCode = shortId.generate();
     const baseUrl = 'https://localhost:3000'
 
-      if(!(isValid(longUrl))){
-          return res.status(400).send({ status : false , data : " enter the longUrl"})
-      }
+    if (!(isValid(longUrl))) {
+        return res.status(400).send({ status: false, data: " enter the longUrl" })
+    }
     if (Object.keys(req.body).length > 1) {
-        return res.status(400).send({ status: false, message: "only One data need in " })
+        return res.status(400).send({ status: false, message: "only One data need in REQUEST " })
     }
 
 
 
-   
 
-    if(longUrl) {
+
+    if (longUrl) {
 
         try {
 
@@ -70,7 +70,7 @@ const creatUrl = async function (req, res) {
             if (!(uri.includes('.'))) {
                 return res.status(400).send({ status: false, message: " invalid longUrl" })
             }
-             
+
             let uriParts = uri.split('.')
             console.log(uriParts)
 
@@ -108,6 +108,10 @@ const getUrl = async (req, res) => {
             return res.status(400).send({ status: false, message: "please enter a urlCode" })
         }
 
+        let isFindurlcode = await Url.findOne({ urlCode: url1 })
+        if (!isFindurlcode) {
+            return res.send(404).send({ status: false, msg: "url code  not present in db " })
+        }
         let cacheProfileData = await GET_ASYNC(url1)
         if (cacheProfileData) {
 
@@ -116,6 +120,7 @@ const getUrl = async (req, res) => {
         } else {
             const originalUrlDetails = await Url.findOne({ urlCode: url1 })
             if (originalUrlDetails) {
+                await SET_ASYNC(url1.toLowerCase(), originalUrlDetails)
                 return res.status(302).redirect(originalUrlDetails.longUrl);
             }
         }
