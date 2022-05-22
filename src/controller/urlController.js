@@ -4,9 +4,6 @@ const isVlidurl = require("url-validation")
 const redis = require("redis");
 const isValidUrl = require("valid-url")
 
-
-const { promisify } = require("util");
-
 //Connect to redis
 const redisClient = redis.createClient(
     17399,
@@ -21,6 +18,10 @@ redisClient.on("connect", async function () {
     console.log(" hello Narendra! Connected to Redis..");
 });
 
+
+
+const { promisify } = require("util");
+
 const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
@@ -33,64 +34,62 @@ const isValid = function (value) {
 };
 
 const creatUrl = async function (req, res) {
-    const { longUrl } = req.body;
-
+    let  longUrl  = req.body.longUrl
+    let shortCode = shortId.generate();
     const baseUrl = 'https://localhost:3000'
 
-    if (!isValid(longUrl)) {
-        return res.status(400).send({ status: false, message: "please enter a longUrl" })
-    }
+      if(!(isValid(longUrl))){
+          return res.status(400).send({ status : false , data : " enter the longUrl"})
+      }
     if (Object.keys(req.body).length > 1) {
         return res.status(400).send({ status: false, message: "only One data need in " })
     }
 
-    if (!isValidUrl.isWebUri(baseUrl)) {
-        return res.status(400).send({ status: false, message: "enter a valid baseUrl" })
-    }
 
-    if (isVlidurl(longUrl)) {
+
+   
+
+    if(longUrl) {
 
         try {
 
-            let cacheProfileData = await GET_ASYNC(`${req.body.longUrl}`)
+            longUrl = longUrl.trim()
 
-            if (cacheProfileData) {
-                console.log(cacheProfileData)
-                let changetoparse = JSON.parse(cacheProfileData)
-                console.log("after set longurl")
-                return res.status(200).send({ status: true, msg: " longurl already used", data: changetoparse })
-
+            if (!(longUrl.includes('//'))) {
+                return res.status(400).send({ status: false, message: " invalid longUrl" })
             }
 
-            let isusedurl = await Url.findOne({ longUrl })
-            if (isusedurl) {
-                await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(isusedurl))
-                return res.status(200).send({ status: true, msg: " longurl already used", data: isusedurl })
+            const urlParts = longUrl.split('//')
+            console.log(longUrl)
+            const scheme = urlParts[0]
+            console.log(scheme)
+            const uri = urlParts[1]
+            console.log(uri)
+            let shortenUriDetails
+
+            if (!(uri.includes('.'))) {
+                return res.status(400).send({ status: false, message: " invalid longUrl" })
+            }
+             
+            let uriParts = uri.split('.')
+            console.log(uriParts)
+
+            if (!(((scheme == "http:") || (scheme == "https:")) && (uriParts[0].trim().length) && (uriParts[1].trim().length))) {
+                return res.status(400).send({ status: false, message: " invalid longUrl" })
+            }
+
+            shortenUriDetails = await Url.findOne({ longUrl: longUrl })
+
+            if (shortenUriDetails) {
+                res.status(201).send({ status: true, data: shortenUriDetails })
+            } else {
+                let shortUrl = baseUrl + "/" + shortCode.toLowerCase();
+                shortenUriDetails = await Url.create({ longUrl: longUrl, shortUrl: shortUrl, urlCode: shortCode })
+                await SET_ASYNC(shortCode.toLowerCase(), longUrl)
+                res.status(201).send({ status: true, data: shortenUriDetails })
             }
 
 
-
-            else {
-
-                let url = await Url.findOne({ longUrl });
-                // create url code
-                let urlCode = shortId.generate();
-                let shortUrl = baseUrl + "/" + urlCode;
-                let createData = {}
-                url = new Url({
-                    longUrl,
-                    shortUrl,
-                    urlCode,
-                });
-                await url.save();
-                createData["longUrl"] = longUrl
-                createData["shortUrl"] = shortUrl
-                createData["urlCode"] = urlCode
-
-                await SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(createData))
-
-                return res.status(201).send({ status: true, data: createData });
-            }
         } catch (error) {
             console.error(error);
             return res.status(500).send({ status: false, error: error.message });
@@ -109,24 +108,20 @@ const getUrl = async (req, res) => {
             return res.status(400).send({ status: false, message: "please enter a urlCode" })
         }
 
-        let cacheProfileData = await GET_ASYNC(`${url1}`)
+        let cacheProfileData = await GET_ASYNC(url1)
         if (cacheProfileData) {
-            let changetoparse = JSON.parse(cacheProfileData)
+
             console.log("after cache")
-            return res.status(302).redirect(changetoparse.longUrl);
+            return res.status(302).redirect(cacheProfileData);
+        } else {
+            const originalUrlDetails = await Url.findOne({ urlCode: url1 })
+            if (originalUrlDetails) {
+                return res.status(302).redirect(originalUrlDetails.longUrl);
+            }
         }
 
-
-        let url = await Url.findOne({ urlCode: url1 });
-        if (url) {
-            await SET_ASYNC(`${url1}`, JSON.stringify(url))
-            console.log("before cache")
-            return res.status(302).redirect(url.longUrl);
-        }
-        else {
-            return res.status(404).send({ status: false, message: "No url found" });
-        }
-    } catch (error) {
+    }
+    catch (error) {
         console.error(error);
         return res.status(500).send({ status: false, error: error.message });
     }

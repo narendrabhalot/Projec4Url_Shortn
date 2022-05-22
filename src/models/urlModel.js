@@ -24,6 +24,6 @@ const UrlSchema = new mongoose.Schema({
         lowercase: true
     },
 
-}, { timestamps: true })
+} )
 
 module.exports = mongoose.model('Url', UrlSchema)
